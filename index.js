@@ -39,8 +39,8 @@ app.post('/merge', async (req, res) => {
     await downloadFile(audioUrl, audioPath);
 
     // Run ffmpeg to merge
-    const command = `ffmpeg -i ${videoPath} -i ${audioPath} -map 0:v -map 1:a -c:v libx264 -c:a aac -shortest ${outputPath} -y`;
-
+    const command = `ffmpeg -i ${videoPath} -i ${audioPath} -map 0:v -map 1:a -c:v libx264 -preset ultrafast -crf 28 -c:a aac -shortest ${outputPath} -y`;
+    
     exec(command, (error, stdout, stderr) => {
       // Clean up input files
       fs.unlink(videoPath, () => {});
