@@ -29,38 +29,20 @@ app.post('/merge', async (req, res) => {
   }
 
   const jobId = uuidv4();
-  const videoPath = path.join(TEMP_DIR, `${jobId}_video.mp4`);
-  const audioPath = path.join(TEMP_DIR, `${jobId}_audio.mp3`);
   const outputPath = path.join(TEMP_DIR, `${jobId}_output.mp4`);
 
-  try {
-    // Download both files
-    await downloadFile(videoUrl, videoPath);
-    await downloadFile(audioUrl, audioPath);
+  const command = `ffmpeg -i "${videoUrl}" -i "${audioUrl}" -map 0:v -map 1:a -c:v libx264 -preset ultrafast -crf 28 -c:a aac -shortest ${outputPath} -y`;
 
-    // Run ffmpeg to merge
-    const command = `ffmpeg -i ${videoPath} -i ${audioPath} -map 0:v -map 1:a -c:v libx264 -preset ultrafast -crf 28 -c:a aac -shortest ${outputPath} -y`;
-    
-    exec(command, (error, stdout, stderr) => {
-      // Clean up input files
-      fs.unlink(videoPath, () => {});
-      fs.unlink(audioPath, () => {});
+  exec(command, { maxBuffer: 1024 * 1024 * 50 }, (error, stdout, stderr) => {
+    if (error) {
+      console.error('FFmpeg error:', stderr);
+      return res.status(500).json({ error: 'FFmpeg processing failed', details: stderr });
+    }
 
-      if (error) {
-        console.error('FFmpeg error:', stderr);
-        return res.status(500).json({ error: 'FFmpeg processing failed', details: stderr });
-      }
-
-      // Send output file back
-      res.sendFile(outputPath, (err) => {
-        // Clean up output file after sending
-        fs.unlink(outputPath, () => {});
-      });
+    res.sendFile(outputPath, (err) => {
+      fs.unlink(outputPath, () => {});
     });
-
-  } catch (err) {
-    res.status(500).json({ error: 'Download failed', details: err.message });
-  }
+  });
 });
 
 app.get('/health', (req, res) => {
